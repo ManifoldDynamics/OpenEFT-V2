@@ -58,7 +58,7 @@ def generate_eft(data):
     # Convert the fingerprints
     os.chdir(TMP_DIR)
     for each in RESULTS:
-        each.convert()
+        each.convert(encoding='wsq')
     os.chdir(CWD)
     # Generate type 14 records
     i = 1 # Create idc char, starts at 1
@@ -73,12 +73,6 @@ def generate_eft(data):
     # Clear results so it can be reused
     RESULTS=[]
     return fname
-
-
-def process_fp():
-    os.chdir(TMP_DIR)
-    for each in RESULTS:
-        each.convert()
 
 def section_fp(fname):
     global RESULTS

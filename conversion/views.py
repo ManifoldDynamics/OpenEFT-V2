@@ -22,10 +22,7 @@ def index(request):
 def new(request):
     return render(request, "conversion/new.html")
 
-def process_fp():
-    os.chdir(TMP_DIR)
-    for each in RESULTS:
-        each.convert()
+from django.http import HttpResponse
 
 def resection(request):
     if request.method == "POST":
@@ -33,7 +30,7 @@ def resection(request):
         fname = os.path.join(TMP_DIR, 'input.png')
         out = manual_section(fname=fname, data=data)
         return JsonResponse({'values':out}, safe=False)
-    return 200
+    return HttpResponse(status=200)
 
 def step1(request):
     global RESULTS
@@ -50,7 +47,7 @@ def step1(request):
         except:
             out = False;#[False,False,False]
         return JsonResponse({'values':out}, safe=False)
-    return 200
+    return HttpResponse(status=200)
 
 def step2(request):
     global FILES

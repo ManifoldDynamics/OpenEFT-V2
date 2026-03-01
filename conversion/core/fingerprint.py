@@ -117,16 +117,56 @@ class Fingerprint:
         self.save_image()
 
     def segment(self):
-        x=""
-        if 'nt' in os.name:
-            x += "wsl "
-        x += "nfseg {} 1 1 1 0 {}".format(self.fgp, self.converted)
-        a = check_output(x, shell=True, text=True).split('\n')
-        for each in a:
-            tmp = each.split('FILE')
-            if len(tmp) > 1 and len(tmp[1])>1:
-                tmp = tmp[1]
-                self.fingers.append(Finger(tmp))
+        # Only use nfseg for slaps/four fingers (fgp 13, 14) and 2 thumbs (15)
+        if self.fgp in [13, 14, 15]:
+            x=""
+            if 'nt' in os.name:
+                x += "wsl "
+            x += "nfseg {} 1 1 1 0 {}".format(self.fgp, self.converted)
+            try:
+                a = check_output(x, shell=True, text=True).split('\n')
+                for each in a:
+                    tmp = each.split('FILE')
+                    if len(tmp) > 1 and len(tmp[1])>1:
+                        tmp = tmp[1]
+                        self.fingers.append(Finger(tmp))
+            except Exception as e:
+                print(f"Error segmenting {self.fgp}: {e}")
+        else:
+            # Individual rolled prints are already single fingers, no need to use nfseg
+            # We create a pseudo-nfseg string so Finger parses it correctly.
+            # Format expected by Finger.readString:
+            # [FILE, {name}, ->, e, 3, sw, {w}, sh, {h}, sx, {w/2}, sy, {h/2}, th, 0.0]
+            # We'll make up a name that Finger expects: "indiv_finger_{fgp}.wsq"
+            name = os.path.basename(self.converted)
+            # The name split expects something like `prefix_type_num.ext`
+            # so we'll construct: dummy_type_{self.fgp}.ext
+            dummy_name = f"indiv_type_{self.fgp}.wsq"
+
+            # Since we just pass the compressed file as the individual finger,
+            # we want Finger.name to point to self.converted. But since name is parsed
+            # from vals[1], we inject `self.converted` or just rename if needed.
+            # Actually, the file itself is already at self.converted.
+            # Let's see what Finger expects: it runs nfiq on vals[1], so vals[1] must be
+            # the path to the file.
+
+            w = self.img.shape[1]
+            h = self.img.shape[0]
+            sx = int(w/2)
+            sy = int(h/2)
+
+            # Make sure vals[1] is just the base name if we are in TMP_DIR
+            # Actually `self.converted` is absolute path or relative to tmpdir?
+            # It's `os.path.join(self.tmpdir, ...)`
+
+            # Since `cwsq` creates the file, let's copy or rename it to dummy_name
+            # so `Finger` can parse `_{self.fgp}.` correctly.
+            dummy_path = os.path.join(self.tmpdir, dummy_name)
+            import shutil
+            shutil.copyfile(self.converted, dummy_path)
+
+            dummy_str = f"FILE {dummy_name} -> e 3 sw {w} sh {h} sx {sx} sy {sy} th 0.0"
+            self.fingers.append(Finger(dummy_str))
 
 
 
@@ -148,6 +188,16 @@ class Fingerprint:
         if encoding == 'jp2':
             self.cga = "JP2" # COMPRESSION ALGORITHM [242-HQ-A6687913-SYSDOCU 3.82 value (ASCII)]
             x += "opj_compress -i {} -o {} -r {} -n 2".format(i,o, ratio)
+        elif encoding == 'wsq':
+            self.cga = "WSQ20"
+
+            raw_file = os.path.join(self.tmpdir, self.name) + '.raw'
+            with open(raw_file, 'wb') as f:
+                f.write(self.img.tobytes())
+
+            x += "cwsq 0.75 raw {} -r {},{},8,{}".format(raw_file, self.img.shape[1], self.img.shape[0], self.ppi)
+            o = raw_file + '.wsq'
+
         # Add other options later if needed.
         os.system(x)
         self.converted = o

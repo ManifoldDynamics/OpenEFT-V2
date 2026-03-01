@@ -7,7 +7,7 @@ RS_CHAR = 0x1E # Subfield
 US_CHAR = 0x1F # Item
 
 # EZ defaults
-VERSION = "0200"
+VERSION = "0203"
 #ORI = "WVATF0900" # ATF
 ORI = "WVATF0800"
 DAI = "WVIAFIS0Z" # FBI/CJIS
@@ -172,9 +172,9 @@ class Type2(Record):
             "Hair Color: (BAL,BLK,BLN,BLU,BRO,GRY,GRN,ONG,PNK,PLE,RED,SDY,WHI): ")
         self.height = input("Height (inches): ")
         self.weight = input("Weight (lbs): ")
-        self.rsn = input("Reason (default: Firearms): ")
+        self.rsn = input("Reason (default: NFA TAX EXEMPT): ")
         if len(self.rsn) < 1:
-            self.rsn = "Firearms"
+            self.rsn = "NFA TAX EXEMPT"
         self.sex = input("Sex (M=Male, F=Female): ")
         self.amp = input("Missing Fingers (csv, 1-10): ") # Need to fix this
         self.stateID = input("State ID: ")
